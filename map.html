@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ward and Neighborhood Map</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+</head>
+<body>
+    <div id="headerContainer">
+        <header>
+            <h1 id="mapTitle">Ward and Neighborhood Map</h1>
+        </header>
+        <div id="mapDescriptionContainer">
+            <h2 id="mapDescription">This map was created as a tool for organizing to help collaborative groups dissect and understand different geographies, and their associated (and available) data. <br>We hope this map can be helpful for making decisions and fostering discussions around how we can continue to mobilize for the future we hope for.</br></h2>
+        </div>
+    </div>
+    <div id="sidebarButtonContainer">
+        <button id="toggleSidebar" aria-label="Open Sidebar">Open Sidebar</button>
+        <div id="sidebar">
+            <button id="closeSidebar" aria-label="Close Sidebar">X</button>
+            <div id="controls">
+                <h5>Select Geographies</h5>
+                <div class="geoOption" data-value="wards">Wards</div>
+                <div class="geoOption" data-value="neighborhoods">Neighborhoods</div>
+                <h5>Overlay Data</h5>
+                <div class="geoOption" data-value="percentMale">Percent Male</div>
+                <div class="geoOption" data-value="percentUnitsAffordable">Percent Units Affordable</div>
+                <div class="geoOption" data-value="points">Show Affordable Housing Properties</div>
+            </div>
+        </div>
+    </div>
+    <main id="main">
+        <div id="map"></div>
+
+        
+        <div id="genderLegend" class="legend">
+            <h4 style="margin: 0; padding-bottom: 5px;">% of population Male</h4>
+            <div><span style="background-color: #f0f9e8; display: inline-block; width: 20px; height: 20px;"></span> 0% - 20%</div>
+            <div><span style="background-color: #bae4bc; display: inline-block; width: 20px; height: 20px;"></span> 20% - 40%</div>
+            <div><span style="background-color: #7bccc4; display: inline-block; width: 20px; height: 20px;"></span> 40% - 60%</div>
+            <div><span style="background-color: #43a2ca; display: inline-block; width: 20px; height: 20px;"></span> 60% - 80%</div>
+            <div><span style="background-color: #0868ac; display: inline-block; width: 20px; height: 20px;"></span> 80% - 100%</div>
+        </div>
+        
+        <div id="affordableHousingLegend" class="legend">
+            <h4 style="margin: 0; padding-bottom: 5px;">% Units Affordable</h4>
+            <div><span style="background-color: #f0f9e8; display: inline-block; width: 20px; height: 20px;"></span> 0% - 1.6%</div>
+            <div><span style="background-color: #bae4bc; display: inline-block; width: 20px; height: 20px;"></span> 1.6% - 3.3%</div>
+            <div><span style="background-color: #7bccc4; display: inline-block; width: 20px; height: 20px;"></span> 3.3% - 4.9%</div>
+            <div><span style="background-color: #43a2ca; display: inline-block; width: 20px; height: 20px;"></span> 4.9% - 6.64%</div>
+            <div><span style="background-color: #0868ac; display: inline-block; width: 20px; height: 20px;"></span> 6.64% - 8.3%</div>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>

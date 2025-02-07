@@ -1,0 +1,180 @@
+/* CSS Variables */
+:root {
+    --sidebarColor: black;
+    --mapBackground: white;
+    --sideBarTextColor: white;
+}
+
+/* General Body Styles */
+body {
+    padding: 0;
+    overflow: hidden; /* Prevent scrolling */
+    font-family: helvetica, arial, sans-serif;
+    background-color: rgb(230, 227, 222);
+}
+
+/* Header Styling */
+header {
+    background-color: black; /* Black background for the entire header */
+    padding: 10px 15px; /* Add some padding */
+    display: flex; /* Use flexbox for alignment */
+    justify-content: space-between; /* Space between title and button */
+    align-items: center; /* Center vertically */
+    width: 100%; /* Ensure it spans the full width */
+    position: relative;
+    z-index: 1001; /* Ensure header is above the map */
+}
+
+header.shifted {
+    margin-left: 200px; /* Move header to the right */
+}
+
+#mapTitle {
+    color: white; /* White text */
+    margin: 0; /* Remove default margin */
+}
+
+/* map desctiption styling*/
+
+#mapDescriptionContainer {
+    background-color: #f7f7f7; /* Light grey background */
+    padding: 10px; /* Add some padding around the text */
+    border-radius: 5px; /* Rounded corners */
+    margin-top: 5px; /* Space above the box */
+    margin-bottom: 15px; /* Space below the box */
+    margin-left: 130px;
+    transition:margin-left ease;
+}
+#mapDescriptionContainer.shifted {
+    margin-left: 200px; /* Shift to the right when the sidebar is open */
+}
+#mapDescription {
+    font-size: 1.2em; /* Adjust the size as needed */
+    color: #555; /* A softer color for the description */
+    margin-top: 0px; /* Space between title and description */
+    margin-bottom: 15px; /* Space below the description */
+}
+
+/* Toggle Button Styles */
+#toggleSidebar {
+    background-color: #f7f7f7; /* Transparent background */
+    border: 2px solid black; /* Border color */
+    color: #555 /* Use sidebar text color */
+    font-size: 16px; /* Adjust font size */
+    cursor: pointer; /* Change cursor on hover */
+    position: absolute; /* Position it in the header */
+    top:70px; /* Adjust position */
+    left: 10px; /* Adjust position */
+    z-index: 1000; /* Ensure it's above everything */
+    padding: 5px 10px; /* Add some padding for better appearance */
+    border-radius: 4px; /* Optional: rounded corners */
+}
+
+#toggleSidebar:hover {
+    color: white; /* Change color on hover */
+}
+
+/* Sidebar Styles */
+#sidebar {
+    position: absolute;
+    left: -200px; /* Initially hidden */
+    top: 0;
+    height: 100%;
+    width: 200px;
+    background-color: var(--sidebarColor);
+    color: var(--sideBarTextColor);
+    border: 1px solid black; /* Black border around sidebar */
+    transition: left 0.3s ease;
+    z-index: 1000; /* Ensure it's above the map */
+}
+
+#sidebar.open {
+    left: 0; /* Show the sidebar */
+}
+
+#closeSidebar {
+    background-color: transparent; /* Transparent background */
+    border: none; /* No border */
+    color: var(--sideBarTextColor); /* Use sidebar text color */
+    font-size: 24px; /* Adjust font size */
+    cursor: pointer; /* Change cursor on hover */
+    position: absolute; /* Position it inside the sidebar */
+    top: 10px; /* Adjust as needed */
+    right: 10px; /* Adjust as needed */
+    z-index: 1001; /* Ensure it's above everything */
+}
+
+#closeSidebar:hover {
+    color: white; /* Change color on hover */
+}
+
+#geoOptions {
+    list-style-type: none; /* Remove default list styling */
+    padding: 0; /* Remove padding */
+    margin: 0; /* Remove margin */
+}
+
+.geoOption {
+    padding: 10px; /* Space for each option */
+    cursor: pointer; /* Change cursor on hover */
+}
+
+.geoOption:hover {
+    background-color: rgba(255, 255, 255, 0.2); /* Highlight on hover */
+}
+
+.geoOption.selected {
+    background-color: rgba(255, 255, 255, 0.5); /* Highlight selected option */
+}
+
+/*legend*/
+.legend {
+    background: transparent; /* Background color */
+    padding: 10px; /* Overall padding */
+    position: absolute; /* Positioning */
+    top: 125px; /* Distance from the top */
+    right: 10px; /* Distance from the right */
+    z-index: 1000; /* Stack order */
+    display: none; /* Initially hidden */
+    border: 2px solid black; /* Black border */
+    border-radius: 5px; /* Optional: rounded corners */
+}
+
+.legend h4 {
+    margin: 2px 0; /* Add some space below the header */
+}
+
+.legend div {
+    display: flex;
+    align-items: center;
+}
+
+.legend span {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 10px; /* Space between color box and text */
+}
+
+/* Main Content Styles */
+#main {
+    transition: margin-left 0.3s ease; /* Smooth transition */
+}
+
+#main.shifted {
+    margin-left: 200px; /* Move main content to the right */
+}
+
+/* Controls Styling */
+#controls {
+    margin: 10px;
+}
+
+/* Map Styling */
+#map {
+    height: 100vh; /* Adjust height to account for the header */
+    width: 100%; /* Full width minus the sidebar width */
+    transition: width 0.3s ease; /* Smooth transition */
+    margin-top: 10px; /* Optional: add some extra space if needed */
+}
+
