@@ -1,0 +1,193 @@
+#import libraries ---------------------
+pacman::p_load(sf, leaflet, tidyverse, here, remotes, openxlsx, rvest, mapview, htmlwidgets, RColorBrewer)
+
+#set work directory  ---------------------
+setwd(here())
+
+# pull in ward information ------------------------------------------------
+ward_info <- read_delim("data/Ward_Offices.csv", delim = ",")%>%
+  select(c(WARD, ALDERMAN))
+wards <- read_sf("data/wards.shp")%>%
+  select(ward_id)%>%
+  rename(WARD = ward_id)%>%
+  left_join(ward_info)%>%
+  st_transform(crs = 4269)
+#mapview(wards)
+
+# neighborhood layers -----------------------------------------------------
+neighborhoods <- read_sf("data/geo_export_ed27a2e8-c7f2-4ca3-b1cc-72b3f4abfa53.shp")%>%
+  st_transform(crs = 4269)%>%
+  select(c(area_numbe, community))
+#mapview(neighborhoods)
+
+# building demo permits ---------------------------------------------------
+buildingDemos_Permits <- read_sf("data/buildingPermits_blockBuilder_demosv2.shp")%>%
+  st_transform(crs = 4269)%>%
+  mutate(address = paste0(street_num, " ", street_dir, " ", street_nam))%>%
+  select(c(id, permit_, date_issue, address,work_descr, building_f))
+#mapview(buildingDemos_Permits)
+
+# affordable housing ------------------------------------------------------
+affordableHousing <- read_sf("data/affordableHousing_points.shp")%>%
+  st_transform(crs = 4269)%>%
+  filter(Community_ %in% c("Englewood","West Englewood", "Greater Grand Crossing", "Austin"))%>%
+  select(c(Property_T, `Property_N`, Address, Units))
+#mapview(affordableHousing)
+
+beneRequests_1024 <- read.xlsx("data/FOIA Request 24-FTS-7026 Noonan.xlsx")
+zips <- read_sf("P:/FRAME/Common/Mappable/ZIP/2024/Aug2024/ZIP_202408_SHP/ZIP_Boundaries_IL.shp")%>%
+  filter(ZIP %in% beneRequests_1024$Zipcode)%>%
+  select(ZIP)%>%
+  left_join(beneRequests_1024, by = c("ZIP" = "Zipcode"))
+
+#create leaflet map
+blockBuilder_leaflet <- 
+  leaflet()%>%
+  addProviderTiles(providers$Esri.WorldImagery)%>%
+  addPolygons(data = wards,
+              popup = as.character(wards$ALDERMAN),
+              label = as.character(wards$WARD),
+              weight = 2,
+              fillOpacity = 0,
+              color = "black",
+              group = "Wards")%>%
+  addPolygons(data = blockBuilder_address,
+              popup = paste("Address", blockBuilder_address$address , "<br>",
+              "Zip:", blockBuilder_address$zip, "<br>",
+              "Area (sqft):", blockBuilder_address$areaFeet, "<br>"),
+              weight = 3,
+              color = "yellow",
+              group = "Block Builder Urban Ag Blocks")%>%
+  addPolygons(data = neighborhoods,
+              label = paste("Neighborhood:",neighborhoods$community),
+              popup = paste("Neighborhood ID:",neighborhoods$area_numbe),
+              weight = 3,
+              fillOpacity = 0,
+              color = "white",
+              group = "Neighborhoods")%>%
+  addCircleMarkers(clusterOptions = markerClusterOptions(),
+             data = affordableHousing,
+             popup = paste("<b>", "Affordable Housing", "</b>", "<br>",
+                           "Property Name:", affordableHousing$Property_N, "<br>",
+                           "Property Type:", affordableHousing$Property_T, "<br>",
+                           "Address:", affordableHousing$Address, "<br>",
+                           "# of Units:", affordableHousing$Units),
+             radius = 4,
+             color = "purple",
+             group = "Affordable Housing")%>%
+  addCircleMarkers(clusterOptions = markerClusterOptions(),
+                   data = landTrustParcels,
+                   popup = "<b>", "Cook County Land Trust", "</b>", "<br>",
+                   "Address:", landTrustParcels_clean0$STREET, "<br>",
+                   "Property Type:", landTrustParcels_clean0$CLASS, "<br>",
+                   "Minnimum Accepted Offer:", landTrustParcels_clean0$MINOFFER, "<br>",
+                   "Square Footage:", landTrustParcels_clean0$SQFOOT,
+                   radius = 5,
+                   color = "orange",
+                   fillOpacity = 1,
+                   group = "Cook County Land Trust Locations")%>%
+  addMarkers(clusterOptions = markerClusterOptions(),
+             data = buildingDemos_Permits,
+             popup =paste("<b>", "Demolition Building Permits", "</b>", "<br>",
+                          "ID", buildingDemos_Permits$id, "<br>",
+                          "Date:", buildingDemos_Permits$date_issue, "<br>",
+                          "Address:", buildingDemos_Permits$address, "<br>",
+                          "Work Description:", buildingDemos_Permits$work_descr,"<br>",
+                          "Building footprint", buildingDemos_Permits$building_f),
+             group = "Demo Building Permits")%>%
+  addLayersControl(overlayGroups = c("Wards", "Block Builder Urban Ag Blocks", "Demo Building Permits",
+                                     "Neighborhoods", "Affordable Housing" , "Cook County Land Trust Locations"))
+
+blockBuilder_leaflet
+
+saveWidget(blockBuilder_leaflet, file = "blockBuilder_research.html")
+
+#### ARCHIVE --------------------
+
+# TO UPDATE: block builder information ------------------------------------
+blockBuilder_address <- read_sf("data/blockBuilder_polygons.shp")%>%
+  st_transform(crs = 4269)
+#mapview(blockBuilder_address)
+#check building permit types for filter
+#workTypes <- buildingDemos_Permits%>%
+#  group_by(work_descr)%>%
+#  summarize(n=n())
+#permitTypes <- buildingPermits%>%
+#  group_by(permit_typ)%>%
+#  summarise(n=n())
+
+
+#blockBuilder_address <- read_rds("data/blockBuilder_rawGeocode.rds")%>%
+#  unnest(cols = output)%>%
+#  filter(address != "")%>%
+#  select(c(address, sqft, zip_code, Latitude, Longitude))%>%
+#  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4269)
+#write_sf(blockBuilder_address, "data/blockBuilder_Addresses.shp")
+
+#cityCheck0 <- blockBuilder_blocks%>%
+#  group_by(City)%>%
+#  summarize(n=n())
+#cityCheck1 <- blockBuilder_blocks%>%
+#  filter(City != "Chicago")
+
+
+# scrape chicago block builder lots
+
+#for addresses:
+library(httr)
+library(jsonlite)
+
+headers = c(
+  accept = "*/*",
+  `accept-language` = "en-US,en;q=0.9",
+  origin = "https://chiblockbuilder.com",
+  priority = "u=1, i",
+  `sec-ch-ua` = '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+  `sec-ch-ua-mobile` = "?0",
+  `sec-ch-ua-platform` = '"Windows"',
+  `sec-fetch-dest` = "empty",
+  `sec-fetch-mode` = "cors",
+  `sec-fetch-site` = "cross-site",
+  `user-agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+)
+
+params = list(
+  api_key = "l18oJEbswxpG8XYUG5DyPw"
+)
+
+res <- httr::GET(url = "https://a.gusc.cartocdn.com/datamade/api/v1/map/88585b24c505a84f93c9d93c424730b5:1729213522135/0/10/262/380.grid.json", httr::add_headers(.headers=headers), query = params)
+
+rawResponse <- content(res, simplifyDataFrame = TRUE)
+
+null_to_NA <- function(x){
+  x[sapply(x, is.null)] <- NA
+  return(x)
+}
+response_data <- lapply(rawResponse, null_to_NA)
+library(janitor)
+responseDF_toGeocode <- as.data.frame(response_data$data)%>%
+  select(which(str_detect(names(.), "address|zip_code|sqft|id|community_")))%>%
+  mutate(across(everything(.), as.character))%>%
+  pivot_longer(cols = everything(), 
+               names_to = c("ID", "variable"),
+               names_pattern = "(.*)\\.(.*)",
+               values_to = "value")%>%
+  pivot_wider(names_from = variable,
+              values_from = value)%>%
+  mutate(City_input = "Chicago",
+         State_input = "IL")
+
+response_rawGeocode <- responseDF_toGeocode%>%
+  norcgeocoding::geocode(address1 = address,
+                         city = City_input,
+                         state = State_input,
+                         zip = zip_code)
+
+write_rds(response_rawGeocode, "data/blockBuilder_rawGeocode.rds")
+
+blockBuilder_address_geocoded<- blockBuilder_address%>%
+  st_drop_geometry()%>%
+  norcgeocoding::geocode(address1 = address,
+                         city = City_input,
+                         state = State_input,
+                         zip = zip_code)

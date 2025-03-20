@@ -1,0 +1,28 @@
+#import libraries ---------------------
+pacman::p_load(sf, leaflet, tidyverse, here, remotes, openxlsx, rvest, mapview, htmlwidgets, RColorBrewer)
+
+#set work directory  ---------------------
+setwd(here())
+
+# pull in ward information ------------------------------------------------
+ward_info <- read_delim("data/Ward_Offices.csv", delim = ",")%>%
+  select(c(WARD, ALDERMAN))
+wards <- read_sf("data/wards.shp")%>%
+  select(ward_id)%>%
+  rename(WARD = ward_id)%>%
+  left_join(ward_info)%>%
+  st_transform(crs = 4269)
+#mapview(wards)
+
+# neighborhood layers -----------------------------------------------------
+neighborhoods <- read_sf("data/geo_export_ed27a2e8-c7f2-4ca3-b1cc-72b3f4abfa53.shp")%>%
+  st_transform(crs = 4269)%>%
+  select(c(area_numbe, community))
+#mapview(neighborhoods)
+
+# municipality layers -----------------------------------------------------
+beneRequests_1024 <- read.xlsx("data/FOIA Request 24-FTS-7026 Noonan.xlsx")
+zips <- read_sf("P:/FRAME/Common/Mappable/ZIP/2024/Aug2024/ZIP_202408_SHP/ZIP_Boundaries_IL.shp")%>%
+  filter(ZIP %in% beneRequests_1024$Zipcode)%>%
+  select(ZIP)%>%
+  left_join(beneRequests_1024, by = c("ZIP" = "Zipcode"))

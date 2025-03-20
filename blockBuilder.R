@@ -1,74 +1,3 @@
-#import libraries ---------------------
-pacman::p_load(sf, leaflet, tidyverse, here, remotes, openxlsx, rvest, mapview, htmlwidgets, RColorBrewer)
-
-#import geocoding library  ---------------------
-remotes::install_git("https://bitbucket.norc.org/scm/geo/norcgeocoding.git")
-library(norcgeocoding)
-
-#set work directory  ---------------------
-setwd(here())
-
-#pull in data for leaflet map  ---------------------
-ward_info <- read_delim("data/Ward_Offices.csv", delim = ",")%>%
-  select(c(WARD, ALDERMAN))
-
-# pull in ward information ------------------------------------------------
-wards <- read_sf("data/wards.shp")%>%
-  select(ward_id)%>%
-  rename(WARD = ward_id)%>%
-  left_join(ward_info)%>%
-  st_transform(crs = 4269)
-#mapview(wards)
-
-# neighborhood layers -----------------------------------------------------
-neighborhoods <- read_sf("data/geo_export_ed27a2e8-c7f2-4ca3-b1cc-72b3f4abfa53.shp")%>%
-  st_transform(crs = 4269)%>%
-  select(c(area_numbe, community))
-#mapview(neighborhoods)
-
-# building demo permits ---------------------------------------------------
-buildingDemos_Permits <- read_sf("data/buildingPermits_blockBuilder_demosv2.shp")%>%
-  st_transform(crs = 4269)%>%
-  mutate(address = paste0(street_num, " ", street_dir, " ", street_nam))%>%
-  select(c(id, permit_, date_issue, address,work_descr, building_f))
-#mapview(buildingDemos_Permits)
-
-# affordable housing ------------------------------------------------------
-affordableHousing <- read_sf("data/affordableHousing_points.shp")%>%
-  st_transform(crs = 4269)%>%
-  filter(Community_ %in% c("Englewood","West Englewood", "Greater Grand Crossing", "Austin"))%>%
-  select(c(Property_T, `Property_N`, Address, Units))
-#mapview(affordableHousing)
-
-# TO UPDATE: block builder information ------------------------------------
-blockBuilder_address <- read_sf("data/blockBuilder_polygons.shp")%>%
-  st_transform(crs = 4269)
-#mapview(blockBuilder_address)
-
-# cook county land trust --------------------------------------------------
-#landTrustParcels <- read.xlsx("data/PrintProperties.xlsx")
-#landTrustParcels_rawGeocoded <- landTrustParcels%>%
-#  norcgeocoding::geocode(address1 = Street,
-#                         city = City,
-#                         state = State,
-#                         zip = Postal.Code)
-
-#landTrustParcels_clean0 <- landTrustParcels_rawGeocoded%>%
-#  rename(STREET = Street, CITY = City, STATE = State, ZIP = Postal.Code, CLASS = Property.Classification, WARD = Ward,
-#         MINOFFER = Minimum.Offer.Amount, NEIGHBORHOOD = Neighborhood, SQFOOT = Parcel.Square.Footage)%>%
-#  unnest(cols = output)%>%
-#  select(c(STREET, CITY, STATE, ZIP, CLASS, WARD, MINOFFER, NEIGHBORHOOD,SQFOOT, Latitude, Longitude))%>%
-#  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4269)
-#write_sf(landTrustParcels_clean0, "data/landTrustParcels.shp")
-
-landTrustParcels <- read_sf("data/landTrustParcels.shp") 
-mapview(landTrustParcels)
-
-beneRequests_1024 <- read.xlsx("data/FOIA Request 24-FTS-7026 Noonan.xlsx")
-zips <- read_sf("P:/FRAME/Common/Mappable/ZIP/2024/Aug2024/ZIP_202408_SHP/ZIP_Boundaries_IL.shp")%>%
-  filter(ZIP %in% beneRequests_1024$Zipcode)%>%
-  select(ZIP)%>%
-  left_join(beneRequests_1024, by = c("ZIP" = "Zipcode"))
 
 #create leaflet map
 blockBuilder_leaflet <- 
@@ -83,8 +12,8 @@ blockBuilder_leaflet <-
               group = "Wards")%>%
   addPolygons(data = blockBuilder_address,
               popup = paste("Address", blockBuilder_address$address , "<br>",
-              "Zip:", blockBuilder_address$zip, "<br>",
-              "Area (sqft):", blockBuilder_address$areaFeet, "<br>"),
+                            "Zip:", blockBuilder_address$zip, "<br>",
+                            "Area (sqft):", blockBuilder_address$areaFeet, "<br>"),
               weight = 3,
               color = "yellow",
               group = "Block Builder Urban Ag Blocks")%>%
@@ -96,15 +25,15 @@ blockBuilder_leaflet <-
               color = "white",
               group = "Neighborhoods")%>%
   addCircleMarkers(clusterOptions = markerClusterOptions(),
-             data = affordableHousing,
-             popup = paste("<b>", "Affordable Housing", "</b>", "<br>",
-                           "Property Name:", affordableHousing$Property_N, "<br>",
-                           "Property Type:", affordableHousing$Property_T, "<br>",
-                           "Address:", affordableHousing$Address, "<br>",
-                           "# of Units:", affordableHousing$Units),
-             radius = 4,
-             color = "purple",
-             group = "Affordable Housing")%>%
+                   data = affordableHousing,
+                   popup = paste("<b>", "Affordable Housing", "</b>", "<br>",
+                                 "Property Name:", affordableHousing$Property_N, "<br>",
+                                 "Property Type:", affordableHousing$Property_T, "<br>",
+                                 "Address:", affordableHousing$Address, "<br>",
+                                 "# of Units:", affordableHousing$Units),
+                   radius = 4,
+                   color = "purple",
+                   group = "Affordable Housing")%>%
   addCircleMarkers(clusterOptions = markerClusterOptions(),
                    data = landTrustParcels,
                    popup = "<b>", "Cook County Land Trust", "</b>", "<br>",
@@ -133,6 +62,11 @@ blockBuilder_leaflet
 saveWidget(blockBuilder_leaflet, file = "blockBuilder_research.html")
 
 #### ARCHIVE --------------------
+
+# TO UPDATE: block builder information ------------------------------------
+blockBuilder_address <- read_sf("data/blockBuilder_polygons.shp")%>%
+  st_transform(crs = 4269)
+#mapview(blockBuilder_address)
 #check building permit types for filter
 #workTypes <- buildingDemos_Permits%>%
 #  group_by(work_descr)%>%

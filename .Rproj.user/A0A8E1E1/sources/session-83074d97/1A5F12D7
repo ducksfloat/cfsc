@@ -1,0 +1,27 @@
+{
+    "id": "1A5F12D7",
+    "path": "~/Projects/APMA/CFSC/cfsc/blockBuilder.R",
+    "project_path": "blockBuilder.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": true,
+    "created": 1742433323225.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "69,31",
+        "scrollLine": "57"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1742434973,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1742435023080,
+    "read_only": false,
+    "read_only_alternatives": []
+}
