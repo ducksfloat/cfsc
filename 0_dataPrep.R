@@ -11,6 +11,7 @@ library(stringr)
 library(rjson)
 library(jsonlite)
 library(installr)
+library(ggmap)
 setwd(here())
 
 # prep files for basemap tiles --------------------------------------------
@@ -123,9 +124,41 @@ cfscSlack_clean1<- cfscSlack_clean0%>%
 check1 <- cfscSlack_clean1%>%
   group_by(rescueFrom)%>%
   summarize(n=n())
+write_xlsx(check1, "data/slack/keystone/rescueFrom.xlsx")
 check2 <- cfscSlack_clean1%>%
   group_by(takenTo)%>%
   summarize(n=n())
+write_xlsx(check2, "data/slack/keystone/takenTo.xlsx")
 check3 <- cfscSlack_clean1%>%
   group_by(both)%>%
   summarize(n=n())
+write_xlsx(check3, "data/slack/keystone/both.xlsx")
+ggmap::register_google("AIzaSyAwz2wwo1PfDG-zAKe17i96d2HoCpvmZu8")
+#geocode("1600 Amphitheatre Parkway, Mountain View, CA", output = "latlon", source = "google")
+
+locations0 <- read_xlsx("data/slack/keystone/locations.xlsx")%>%
+  mutate(City = "Chicago",
+         State = "IL",
+         pct_n = round((n/sum(n, na.rm = TRUE))*100, 2))
+locations1 <- locations0%>%
+  mutate(Address = paste(Name, City, State, sep = ", "))
+ check0 <- locations1%>%
+  filter(is.na(Address) | Address == "")
+ addresses <- locations1$Address
+ geocode_results <- geocode(addresses, output = "all", source = "google")
+
+ geocode_data <- purrr::map_dfr(geocode_results, function(result) {
+   if (length(result$results) == 0) {
+     return(tibble(lat = NA, lon = NA, accuracy = NA))
+   }
+   location <- result$results[[1]]$geometry$location
+   accuracy <- result$results[[1]]$geometry$location_type
+   tibble(lat = location$lat, lon = location$lng, accuracy = accuracy)
+ })
+locations_geocoded <- bind_cols(locations1, geocode_data)
+write_rds(locations_geocoded,"data/slack/keystone/locations_geocodedRaw.rds")
+
+locations_sf0 <- locations_geocoded%>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326)
+mapview(locations_sf0)
+st_write(locations_sf0, "data/slack/keystone/locations_geocoded.shp")
