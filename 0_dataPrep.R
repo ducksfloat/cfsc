@@ -108,6 +108,7 @@ cfscSlack_clean1<- cfscSlack_clean0%>%
                          rescueFrom %in% c("local foods") ~ "Local Foods",
                          rescueFrom %in% c("LSFM") ~ "Logan Square Farmers Market",
                          rescueFrom %in% c("West Suburban Community Pantry", "West Suburban Pantry") ~ "Western Suburban Pantry",
+                         rescueFrom %in% c("New Life") ~ "New Life Albany Park",
                          TRUE ~ rescueFrom),
          takenTo = case_when(takenTo %in% c("Shelter", "shelter") ~ "Pilsen shelter",
                              takenTo %in% c("55th &amp Pulaski") ~ "55/Pulaski",
@@ -117,11 +118,19 @@ cfscSlack_clean1<- cfscSlack_clean0%>%
                              takenTo %in% c("Psn") ~ "PSN",
                              takenTo %in% c("Lsrsn", "lsrsn", "LSRSN ") ~ "LSRSN",
                              takenTo %in% c("pilsen food pantry") ~ "Pilsen Food Pantry",
+                             takenTo %in% c("Fnb") ~ "Rogers Park Food Not Bombs",
+                             takenTo %in% c("SSMA") ~ "South Side Mutual Aid",
+                             takenTo %in% c("WSMA") ~ "West Side Mutual Aid",
+                             takenTo %in% c("SWC") ~ "Southwest Collective",
                              TRUE ~ takenTo),
          both = case_when(both %in% c("OWMCL-Chicago", "OWMCL-CHICAGO") ~ "Owmcl-chicago",
                           both == "keystone " ~ "Keystone",
-                          TRUE ~ both))%>%
-  filter(!is.na(takenTo)|!is.na(rescueFrom)|!is.na(both))
+                          TRUE ~ both),
+         ID = row_number())%>%
+  filter(!is.na(takenTo)|!is.na(rescueFrom)|!is.na(both))%>%
+  filter(!takenTo %in% c("Love Fridge", "community fridge", "Pilsen/Pulaski", "Mr Wiggins", "55/Pulaski", "CACC"))
+
+#what do we do with: Love Fridge, Community Fridge, Pilsen/Pulaski, Mr Wiggins, 55/Pulaski, CACC, 
 check1 <- cfscSlack_clean1%>%
   group_by(rescueFrom)%>%
   summarize(n=n())
@@ -140,22 +149,21 @@ locations <- bind_rows(check1, check2, check3)%>%
   mutate(name = case_when(!is.na(rescueFrom) ~ rescueFrom,
                           !is.na(takenTo) ~ takenTo,
                           !is.na(both) ~ both),
+         originFlag = case_when(!is.na(rescueFrom) ~ "1",
+                                !is.na(takenTo) ~ "2",
+                                !is.na(both) ~ "3"),
          City = "Chicago",
          State = "IL")%>%
-  filter(!name %in% c("Mariano’s", "Dom's", ))%>%
+  filter(!name %in% c("Mariano’s", "Dom's", "Jewel"))%>%
   mutate(pct_n = round((n/sum(n, na.rm = TRUE))*100, 2))%>%
-  select(-c(rescueFrom, takenTo, both))%>%
-  mutate(Address = paste(Name, City, State, sep = ", "))
-
+  mutate(Address = paste(name, City, State, sep = ", "))
 ggmap::register_google("AIzaSyAwz2wwo1PfDG-zAKe17i96d2HoCpvmZu8")
 #geocode("1600 Amphitheatre Parkway, Mountain View, CA", output = "latlon", source = "google")
 
-locations1 <- locations0%>%
-  mutate(Address = paste(Name, City, State, sep = ", "))
-check0 <- locations1%>%
+check0 <- locations%>%
   filter(is.na(Address) | Address == "")
- addresses <- locations1$Address
- geocode_results <- geocode(addresses, output = "all", source = "google")
+addresses <- locations$Address
+geocode_results <- geocode(addresses, output = "all", source = "google")
 
  geocode_data <- purrr::map_dfr(geocode_results, function(result) {
    if (length(result$results) == 0) {
@@ -165,12 +173,15 @@ check0 <- locations1%>%
    accuracy <- result$results[[1]]$geometry$location_type
    tibble(lat = location$lat, lon = location$lng, accuracy = accuracy)
  })
-locations_geocoded <- bind_cols(locations1, geocode_data)
-write_rds(locations_geocoded,"data/slack/keystone/locations_geocodedRaw.rds")
-
+ locations_geocoded <- bind_cols(locations, geocode_data)
+write_rds(locations_geocoded,"data/slack/keystonelocations_geocodedRaw.rds")
 locations_sf0 <- locations_geocoded%>%
-  st_as_sf(coords = c("lon", "lat"), crs = 4326)
-mapview(locations_sf0)
+  st_as_sf(coords = c("lon", "lat"), crs = 4326)%>%
+  select(-c(rescueFrom, takenTo, both))
+mapview(locations_sf0, zcol = "originFlag")
+map0 <- mapview(locations_sf0, zcol = "originFlag") + mapview(neighborhood, zcol = "cfsc_foodDistro_flag")
+map0
+
 st_write(locations_sf0, "data/slack/keystone/locations_geocoded.shp")
 
 
@@ -184,6 +195,7 @@ neighborhood <- read_delim("data/csv/Boundaries_-_Community_Areas_20250502.csv",
   mutate(cfsc_foodDistro_flag = case_when(COMMUNITY %in% distroNeighborhoods ~ "1",
                                           TRUE ~ "0"))%>%
   st_as_sf(wkt = "the_geom", crs = 4326)
+mapview(neighborhood, zcol = "cfsc_foodDistro_flag")
 st_write(neighborhood, "data/shapefile/neighborhood.shp")
 neighborhood_centroid <- neighborhood%>%
   st_centroid()
