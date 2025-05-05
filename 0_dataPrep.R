@@ -14,7 +14,7 @@ library(installr)
 library(ggmap)
 setwd(here())
 
-# prep files for basemap tiles --------------------------------------------
+# NOT NEEDED: prep files for basemap tiles --------------------------------------------
 neighborhoods <- read_delim("data/CommAreas_20250416.csv", delim = ",")%>%
   st_as_sf(wkt = "the_geom", crs = 4326)
 st_write(neighborhoods, ("data/CommAreas.shp"))
@@ -46,9 +46,10 @@ for (i in jsonFiles) {
 write_rds(cfscSlack, "data/slack/cfsc_keystoneSlack.rds")
 
 # read in raw file for cleaning -------------------------------------------
-cfscSlack <- read_rds("data/slack/cfsc_keystoneSlack.rds")
+cfscSlack <- read_rds("data/slack/cfsc_ucSlack.rds")
 
 # start parsing and cleaning ----------------------------------------------
+#create lists of general group names to be flagged in slack data and pulled into rescue types
 rescueFrom <- c("WP Aldi", "Aldi WP", "Aldi Hodgkins", "Aldi in Wicker Park", "Wicker Park", "Cicero Aldi", "Kostner Aldi",
                 "Aldi kostner", "Aldi Kostner", "Aldi on Kostner", "Aldi Lyons", "Aldi Clybourn", "Lyons and Hodgkins ALDI", 
                 "kimball Aldi", "Belmont Aldi", "Aldi Cicero", "Aldi Belmont",
@@ -77,6 +78,8 @@ takenTo <- c("Love Fridges", "Love Fridge", "Love fridge", "love fridge", "Port 
              "PSN", "Psn", "LF", "Avondale", "WSMA")
 both <- c("Owmcl-chicago", "OWMCL-Chicago", "OWMCL-CHICAGO","keystone ", "Keystone")
 #"Owmcl-chicago", "OWMCL-CHICAGO",
+
+#Pull out lines that are flagged from grouping above and clean into geocodable locations
 cfscSlack_clean0 <- cfscSlack%>%
   filter(!str_detect(text, "has joined the channel"),
          str_detect(date, "2025-") | str_detect(date, "2024-"),
@@ -109,6 +112,7 @@ cfscSlack_clean1<- cfscSlack_clean0%>%
                          rescueFrom %in% c("LSFM") ~ "Logan Square Farmers Market",
                          rescueFrom %in% c("West Suburban Community Pantry", "West Suburban Pantry") ~ "Western Suburban Pantry",
                          rescueFrom %in% c("New Life") ~ "New Life Albany Park",
+                         rescueFrom %in% c("PFP") ~ "Pilsen Food Pantry",
                          TRUE ~ rescueFrom),
          takenTo = case_when(takenTo %in% c("Shelter", "shelter") ~ "Pilsen shelter",
                              takenTo %in% c("55th &amp Pulaski") ~ "55/Pulaski",
@@ -116,21 +120,28 @@ cfscSlack_clean1<- cfscSlack_clean0%>%
                              takenTo %in% c("Love Fridges", "Love fridge", "love fridge", "LoveFridge", "community fridges",
                                             "Lie fridge", "Live Fridge","Live fridge", "community fridges", "LF") ~ "Love Fridge",
                              takenTo %in% c("Psn") ~ "PSN",
-                             takenTo %in% c("Lsrsn", "lsrsn", "LSRSN ") ~ "LSRSN",
+                             takenTo %in% c("Lsrsn", "lsrsn", "LSRSN ") ~ "Lincoln Square Ravenswood Solidarity Network",
                              takenTo %in% c("pilsen food pantry") ~ "Pilsen Food Pantry",
                              takenTo %in% c("Fnb") ~ "Rogers Park Food Not Bombs",
                              takenTo %in% c("SSMA") ~ "South Side Mutual Aid",
                              takenTo %in% c("WSMA") ~ "West Side Mutual Aid",
                              takenTo %in% c("SWC") ~ "Southwest Collective",
+                             takenTo %in% c("PSN") ~ "Pilsen Solidarity Network",
                              TRUE ~ takenTo),
          both = case_when(both %in% c("OWMCL-Chicago", "OWMCL-CHICAGO") ~ "Owmcl-chicago",
                           both == "keystone " ~ "Keystone",
                           TRUE ~ both),
          ID = row_number())%>%
   filter(!is.na(takenTo)|!is.na(rescueFrom)|!is.na(both))%>%
-  filter(!takenTo %in% c("Love Fridge", "community fridge", "Pilsen/Pulaski", "Mr Wiggins", "55/Pulaski", "CACC"))
+  filter(!takenTo %in% c("Love Fridge", "community fridge", "Pilsen/Pulaski", "Mr Wiggins", "55/Pulaski", "CACC", "Green City Market",
+                         "Owmcl-chicago", "Community Dinners"))
 
-#what do we do with: Love Fridge, Community Fridge, Pilsen/Pulaski, Mr Wiggins, 55/Pulaski, CACC, 
+#QUESSTION FOR COALITION:
+#what do we do with: 
+#Love Fridge, Community Fridge, Pilsen/Pulaski, Mr Wiggins, 55/Pulaski, CACC, Green City Market, Owmcl-chicago,
+#community dinners,
+
+#get frequencies of each identified location by group for location master list and 
 check1 <- cfscSlack_clean1%>%
   group_by(rescueFrom)%>%
   summarize(n=n())
@@ -174,20 +185,22 @@ geocode_results <- geocode(addresses, output = "all", source = "google")
    tibble(lat = location$lat, lon = location$lng, accuracy = accuracy)
  })
  locations_geocoded <- bind_cols(locations, geocode_data)
-write_rds(locations_geocoded,"data/slack/keystonelocations_geocodedRaw.rds")
+write_rds(locations_geocoded,"data/slack/uclocations_geocodedRaw.rds")
+
+locations_geocoded<- read_rds("data/slack/uclocations_geocodedRaw.rds")
 locations_sf0 <- locations_geocoded%>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326)%>%
   select(-c(rescueFrom, takenTo, both))
 mapview(locations_sf0, zcol = "originFlag")
-map0 <- mapview(locations_sf0, zcol = "originFlag") + mapview(neighborhood, zcol = "cfsc_foodDistro_flag")
-map0
 
-st_write(locations_sf0, "data/slack/keystone/locations_geocoded.shp")
-
-
+st_write(locations_sf0, "data/slack/locations_geocoded.shp")
 
 
 # coalition food distributions --------------------------------------------
+#pull out type 2 (taken to) locations for flagging in neighborhoods as redistribution
+takenTo_locations <- locations_sf0%>%
+  filter(originFlag == "2")
+
 #read in files from data portal to export into shapes
 distroNeighborhoods = c("ROGERS PARK", "NEAR WEST SIDE", "HUMBOLDT PARK", "BELMONT CRAGIN", "EDGEWATER", "LINCOLN SQURE", "RAVENSWOOD", 
                         "PILSEN", "IRVING PARK", "EAST GARFIELD PARK", "AUSTIN", "NORTH LAWNDALE", "WEST GARFIELD PARK", "WEST LOOP")
@@ -197,11 +210,14 @@ neighborhood <- read_delim("data/csv/Boundaries_-_Community_Areas_20250502.csv",
   st_as_sf(wkt = "the_geom", crs = 4326)
 mapview(neighborhood, zcol = "cfsc_foodDistro_flag")
 st_write(neighborhood, "data/shapefile/neighborhood.shp")
+
 neighborhood_centroid <- neighborhood%>%
   st_centroid()
 check0 <- mapview(neighborhood) + mapview(neighborhood_centroid)
 check0
 st_write(neighborhood_centroid, "data/shapefile/neighborhood_centroid.shp")
 
+map0 <- mapview(locations_sf0, zcol = "originFlag") + mapview(neighborhood, zcol = "cfsc_foodDistro_flag")
+map0
 #export into geojson
 
