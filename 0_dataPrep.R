@@ -12,6 +12,7 @@ library(rjson)
 library(jsonlite)
 library(installr)
 library(ggmap)
+library(leaflet)
 setwd(here())
 
 # NOT NEEDED: prep files for basemap tiles --------------------------------------------
@@ -45,10 +46,10 @@ for (i in jsonFiles) {
 }
 write_rds(cfscSlack, "data/slack/cfsc_keystoneSlack.rds")
 
-# read in raw file for cleaning -------------------------------------------
+# READ IN RAW UC SLACK FILE FOR CLEANING -------------------------------------------
 cfscSlack <- read_rds("data/slack/cfsc_ucSlack.rds")
 
-# start parsing and cleaning ----------------------------------------------
+# INITIAL PARSING, CLEANING AND GEOCODING OF RAW UC WAREHOUSE SLACK CHANNEL ----------------------------------------------
 #create lists of general group names to be flagged in slack data and pulled into rescue types
 rescueFrom <- c("WP Aldi", "Aldi WP", "Aldi Hodgkins", "Aldi in Wicker Park", "Wicker Park", "Cicero Aldi", "Kostner Aldi",
                 "Aldi kostner", "Aldi Kostner", "Aldi on Kostner", "Aldi Lyons", "Aldi Clybourn", "Lyons and Hodgkins ALDI", 
@@ -76,7 +77,7 @@ takenTo <- c("Love Fridges", "Love Fridge", "Love fridge", "love fridge", "Port 
              "pilsen food pantry", "Pilsen Food Pantry", 
              "Lsrsn", "lsrsn", "LSRSN ","Fnb", "CACC", "SSMA","SWC", "Mr Wiggins", "Edgewater Mutual Aid","Community Dinners",
              "PSN", "Psn", "LF", "Avondale", "WSMA")
-both <- c("Owmcl-chicago", "OWMCL-Chicago", "OWMCL-CHICAGO","keystone ", "Keystone")
+both <- c("Owmcl-chicago", "OWMCL-Chicago", "OWMCL-CHICAGO","keystone ", "Keystone", "UC", 'uc', "Uc", "uC")
 #"Owmcl-chicago", "OWMCL-CHICAGO",
 
 #Pull out lines that are flagged from grouping above and clean into geocodable locations
@@ -130,6 +131,7 @@ cfscSlack_clean1<- cfscSlack_clean0%>%
                              TRUE ~ takenTo),
          both = case_when(both %in% c("OWMCL-Chicago", "OWMCL-CHICAGO") ~ "Owmcl-chicago",
                           both == "keystone " ~ "Keystone",
+                          both %in% c("uc", "UC") ~ "Urban Canopy",
                           TRUE ~ both),
          ID = row_number())%>%
   filter(!is.na(takenTo)|!is.na(rescueFrom)|!is.na(both))%>%
@@ -193,31 +195,138 @@ locations_sf0 <- locations_geocoded%>%
   select(-c(rescueFrom, takenTo, both))
 mapview(locations_sf0, zcol = "originFlag")
 
-st_write(locations_sf0, "data/slack/locations_geocoded.shp")
+st_write(locations_sf0, "data/shapefile/locations_geocoded.shp")
 
 
-# coalition food distributions --------------------------------------------
-#pull out type 2 (taken to) locations for flagging in neighborhoods as redistribution
-takenTo_locations <- locations_sf0%>%
-  filter(originFlag == "2")
-
-#read in files from data portal to export into shapes
-distroNeighborhoods = c("ROGERS PARK", "NEAR WEST SIDE", "HUMBOLDT PARK", "BELMONT CRAGIN", "EDGEWATER", "LINCOLN SQURE", "RAVENSWOOD", 
-                        "PILSEN", "IRVING PARK", "EAST GARFIELD PARK", "AUSTIN", "NORTH LAWNDALE", "WEST GARFIELD PARK", "WEST LOOP")
-neighborhood <- read_delim("data/csv/Boundaries_-_Community_Areas_20250502.csv", delim = ",")%>%
-  mutate(cfsc_foodDistro_flag = case_when(COMMUNITY %in% distroNeighborhoods ~ "1",
-                                          TRUE ~ "0"))%>%
+# CREATE MASTER FILE OF NEIGHBORHOODS WITH CFSC FOOD DISTRIBUTION ACTIVITY --------------------------------------------
+neighborhood0 <- read_delim("data/csv/Boundaries_-_Community_Areas_20250502.csv", delim = ",")%>%
   st_as_sf(wkt = "the_geom", crs = 4326)
-mapview(neighborhood, zcol = "cfsc_foodDistro_flag")
-st_write(neighborhood, "data/shapefile/neighborhood.shp")
 
-neighborhood_centroid <- neighborhood%>%
-  st_centroid()
-check0 <- mapview(neighborhood) + mapview(neighborhood_centroid)
-check0
-st_write(neighborhood_centroid, "data/shapefile/neighborhood_centroid.shp")
+#these points are taken from the takento flag in the slack data
+#we will join neighborhood to these points and add to the list below
+takenTo_locations <- st_read("data/shapefile/locations_geocoded.shp")%>%
+  filter(originFlag == "2")%>%
+  st_join(neighborhood0, join = st_within)%>%
+  select(COMMUNITY)%>%
+  st_drop_geometry()%>%
+  distinct()
+print(takenTo_locations)
 
-map0 <- mapview(locations_sf0, zcol = "originFlag") + mapview(neighborhood, zcol = "cfsc_foodDistro_flag")
+#these neighborhoods come from the cfsc food distribution calendar
+distroNeighborhoods = c("LINCOLN SQUARE","ROGERS PARK","ALBANY PARK","IRVING PARK","BELMONT CRAGIN","AVONDALE",
+                        "LOGAN SQUARE","HUMBOLDT PARK","WEST TOWN","AUSTIN","WEST GARFIELD PARK",
+                        "EAST GARFIELD PARK","NEAR WEST SIDE","NORTH LAWNDALE","LOWER WEST SIDE",
+                        "NEAR SOUTH SIDE","WEST LAWN","AUBURN GRESHAM","BEVERLY","MORGAN PARK","EDGEWATER")
+
+                        #"DOUGLAS",                      #"OAKLAND",
+                        #"FULLER PARK",                        #"GRAND BOULEVARD", 
+                        #"KENWOOD",                        #"WASHINGTON PARK", 
+                        #"HYDE PARK",                        #"WOODLAWN",
+                        #"JEFFERSON PARK",                        #"FOREST GLEN",
+                        #"NORTH PARK",                        #"PORTAGE PARK",
+                        #"DUNNING",                        #"MONTCLARE",
+                        #"WEST RIDGE",                        #"HERMOSA",
+                        #"BURNSIDE",                        #"GARFIELD RIDGE",
+                        #"UPTOWN",                        #"SOUTH LAWNDALE",
+                        #"ARMOUR SQUARE",                        #"NORWOOD PARK",  
+                        #"NEAR NORTH SIDE",                        #"LOOP",
+                        #"SOUTH SHORE",                        #"CHATHAM",
+                        #"AVALON PARK",                        #"SOUTH CHICAGO", 
+                        #"MCKINLEY PARK",                        #"LAKE VIEW",
+                        #"CALUMET HEIGHTS",                        #"ROSELAND",
+                        #"NORTH CENTER",                        #"PULLMAN",
+                        #"SOUTH DEERING",                        #"EAST SIDE",
+                        #"WEST PULLMAN"                        #"RIVERDALE",
+                        #"HEGEWISCH",                          #"ARCHER HEIGHTS",
+                        #"BRIGHTON PARK",                        #"BRIDGEPORT",
+                        #"NEW CITY",                        #"WEST ELSDON",
+                        #"GAGE PARK",                        #"CLEARING",
+                        #"CHICAGO LAWN",                        #"WEST ENGLEWOOD",
+                        #"ENGLEWOOD",                        #"GREATER GRAND CROSSING",
+                        #"LINCOLN PARK",                        #"ASHBURN",
+                        #"WASHINGTON HEIGHTS",                        #"MOUNT GREENWOOD",
+                        #"OHARE",  
+                        #"EDISON PARK")
+neighborhood1 <- neighborhood0%>%
+  mutate(cfsc_foodDistro_flag = case_when(COMMUNITY %in% distroNeighborhoods ~ "1", 
+                                          TRUE ~ "0"))
+mapview(neighborhood1, zcol = "cfsc_foodDistro_flag")
+st_write(neighborhood1, "data/shapefile/cfscDisto_neighborhood.shp")
+
+#read in food locations
+locations_sf0 <- st_read("data/shapefile/locations_geocoded.shp")%>%
+  filter(originFlag == "1")
+
+#check together
+map0 <- mapview(locations_sf0, zcol = "originFlag") + mapview(neighborhood1, zcol = "cfsc_foodDistro_flag")
 map0
+
+# PULL IN WAREHOUSE LOCATIONS FOR SHAPEFILE EXPORT ------------------------
+locations_warehouse0 <- st_read("data/shapefile/locations_geocoded.shp")%>%
+  filter(originFlag == "3" & name != "Owmcl-chicago")
+st_write(locations_warehouse0, "data/shapefile/warehouseLocations.shp")
+
+library(RColorBrewer)
+library(htmltools)
+
+unique_n <- unique(locations_sf0$n)
+quantilesPoints <- quantile(unique_n, probs = seq(0, 1, length.out = 6), na.rm = TRUE)
+palPoints <- colorBin(palette = "PuBuGn", domain = unique_n, bins = quantilesPoints, na.color = "#CCCCCC")
+palNeighborhood <- colorFactor(
+  palette = c("#FFFFFF","#ADD8E6"),  # Light blue for 1, white for 0
+  domain = neighborhood1$cfsc_foodDistro_flag
+)
+
+map <- leaflet() %>%
+  addTiles() %>%
+  setView(lng = -87.6298, lat = 41.8781, zoom = 12) %>%
+  addPolygons(data = neighborhood1,
+              fillColor = ~palNeighborhood(cfsc_foodDistro_flag),
+              color = "black",
+              weight = 1,
+              opacity = 1,
+              fillOpacity = ~ifelse(cfsc_foodDistro_flag == 0, 0, 0.7),
+              popup = ~paste(COMMUNITY)) %>%
+  addCircleMarkers(
+    data = locations_sf0,
+    radius = 6,
+    color = ~palPoints(n),
+    fillOpacity = 0.8,
+    popup = ~paste(name, ":", n, "rescues this year")
+  ) %>%
+  addAwesomeMarkers(
+    data = locations_warehouse0,
+    icon = awesomeIcons(
+      icon = 'star',
+      iconColor = "white",
+      markerColor = "green",
+      library = "fa"),
+  popup = ~paste(name, "warehouse")
+  )%>%
+  addLegend(
+    "bottomright",
+    pal = palNeighborhood,
+    values = neighborhood1$cfsc_foodDistro_flag,
+    title = "CFSC distribution in neighborhood",
+    opacity = 1
+  ) %>%
+  addLegend(
+    "bottomright",  # Position of the second legend (Quantiles of n)
+    pal = palPoints,
+    values = locations_sf0$n,
+    title = "Quantiles of number of food rescues this year",
+    opacity = 1,
+    position = "bottomright"  # Position both legends at the bottom-right corner
+  )
+
+map
+save_html(map, "webmap/leaflet_map.html")
+
+
 #export into geojson
+st_write(neighborhood1, "data/geojson/neighborhoods.geojson", driver = "GeoJSON")
+st_write(locations_sf0, "data/geojson/locations_geocoded.geojson", driver = "GeoJSON")
+st_write(locations_warehouse0, "data/geojson/locations_warehouse.geojson", driver = "GeoJSON")
+
+
 
