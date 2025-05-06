@@ -1,9 +1,0 @@
-{
-"type": "FeatureCollection",
-"name": "locations_warehouse",
-"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
-"features": [
-{ "type": "Feature", "properties": { "n": 2, "name": "Keystone", "originFlag": "3", "City": "Chicago", "State": "IL", "pct_n": 0.34, "Address": "Keystone, Chicago, IL", "accuracy": "ROOFTOP" }, "geometry": { "type": "Point", "coordinates": [ -87.6362894, 41.8846723 ] } },
-{ "type": "Feature", "properties": { "n": 167, "name": "Urban Canopy", "originFlag": "3", "City": "Chicago", "State": "IL", "pct_n": 28.74, "Address": "Urban Canopy, Chicago, IL", "accuracy": "ROOFTOP" }, "geometry": { "type": "Point", "coordinates": [ -87.6814625, 41.8447559 ] } }
-]
-}
