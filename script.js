@@ -1,13 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialize the map and set its view to Chicago
+  // initialize the map and set view
   const map = L.map('map').setView([41.8781, -87.6298], 12); 
 
-  // Add OpenStreetMap tile layer
+  // add OSM tile layer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
-  // Initialize layer groups for data
+  // initialize layer groups for data
   let warehouseLayer = L.layerGroup();
   let rescueLayer = L.layerGroup();
   let neighborhoodLayer = L.layerGroup();
@@ -41,7 +41,7 @@ function getColorByQuantile(value, quantiles, palette) {
   return palette[palette.length - 1];
 }
 
-// Function to create the quantile legend
+// create the quantile legend
 function addQuantileLegend(map, quantiles, colorScale) {
   const legend = L.control({ position: 'bottomright' });
 
@@ -116,7 +116,7 @@ fetch('https://raw.githubusercontent.com/ducksfloat/cfsc/refs/heads/geog585_proj
   
 
   
-  // Neighborhoods
+  // neighborhoods:
   
   //function to create neighborhood flag legend
   function addFoodDistroLegend(map) {
@@ -126,14 +126,11 @@ fetch('https://raw.githubusercontent.com/ducksfloat/cfsc/refs/heads/geog585_proj
     const div = L.DomUtil.create('div', 'info legend');
     const labels = [];
 
-    // Title of the legend
     div.innerHTML += '<strong>CFSC Neighborhood Distribution</strong><br>';
-
-    // The legend will display two colors based on cfsc_foodDistro_flag
+    
     const colors = ['lightblue', 'transparent'];
     const labelsText = ['With Food Distribution', 'Without Food Distribution'];
 
-    // Loop to add the color and text labels
     for (let i = 0; i < colors.length; i++) {
       const borderStyle = colors[i] === 'transparent' ? 'border: 1px solid black; background-color: transparent;' : 'background-color: ' + colors[i];
       div.innerHTML += `
@@ -175,7 +172,8 @@ fetch('https://raw.githubusercontent.com/ducksfloat/cfsc/refs/heads/geog585_proj
           };
         }
       }
-    //pull in layers  
+  
+    //get neighborhood layer
       fetch('https://raw.githubusercontent.com/ducksfloat/cfsc/refs/heads/geog585_proj/geojson/neighborhoods.geojson')
     .then(response => response.json())
     .then(data => {
@@ -210,42 +208,42 @@ fetch('https://raw.githubusercontent.com/ducksfloat/cfsc/refs/heads/geog585_proj
     })
     .catch(error => console.error('Error loading warehouseLocations.geojson:', error));
 
-  // Add layers to the map
+  // add all layers to the map
   warehouseLayer.addTo(map);
   neighborhoodLayer.addTo(map);
   rescueLayer.addTo(map);
 
-  // Add Layer Control to the map
+  // add layer control
   L.control.layers({}, {
     "Warehouse Locations": warehouseLayer,
     "Rescue Locations": rescueLayer,
     "Neighborhoods": neighborhoodLayer
   }).addTo(map);
 
-  // Sidebar toggle functionality
+  // sidebar toggle
   const sidebar = document.getElementById('sidebar');
   const openBtn = document.getElementById('open-sidebar');
   const closeBtn = document.getElementById('close-btn');
   const container = document.getElementById('container');
   const mapContainer = document.getElementById('map');
 
- // Open sidebar and shift content
+ // open sidebar -- shift map content to right
 openBtn.addEventListener('click', () => {
   sidebar.classList.add('open');
-  container.classList.add('shifted'); // Shift the entire container (map + title)
-  openBtn.style.display = 'none'; // Hide open button
-  map.invalidateSize(); // Ensure map resizes correctly
+  container.classList.add('shifted');
+  openBtn.style.display = 'none';
+  map.invalidateSize(); 
 });
 
-// Close sidebar and reset content
+// close sidebar -- dynamically shift map back
 closeBtn.addEventListener('click', () => {
   sidebar.classList.remove('open');
-  container.classList.remove('shifted'); // Reset the container position
-  openBtn.style.display = 'block'; // Show open button
-  map.invalidateSize(); // Ensure map resizes correctly
+  container.classList.remove('shifted');
+  openBtn.style.display = 'block'; 
+  map.invalidateSize(); 
 });
 
-  // Layer toggle functionality for checkboxes
+  // layer toggle functionality
   function setupLayerToggle(id, layer) {
     const checkbox = document.getElementById(id);
     if (checkbox) {
@@ -259,22 +257,21 @@ closeBtn.addEventListener('click', () => {
     }
   }
 
-  // Setting up layer toggle checkboxes
+  // toggle checkboxes
   setupLayerToggle('toggle-warehouses', warehouseLayer);
   setupLayerToggle('toggle-rescue-locations', rescueLayer);
   setupLayerToggle('toggle-neighborhoods', neighborhoodLayer);
 
-  // Open the sidebar automatically when the page loads
-  sidebar.classList.add('open'); // Add the 'open' class to make it visible
-  container.classList.add('shifted'); // Shift the container to make room for the sidebar
-  openBtn.style.display = 'none'; // Hide the open button
-  map.invalidateSize(); // Ensure map resizes correctly after sidebar opens
+  // sidebar open on page loads
+  sidebar.classList.add('open');
+  container.classList.add('shifted');
+  openBtn.style.display = 'none'; 
+  map.invalidateSize();
   
-    // Add "A Note on Data" button functionality
+    // add data button
   const dataNoteButton = document.getElementById('data-note-button');
 
   dataNoteButton.addEventListener('click', () => {
-    // Create a custom popup with the data information
     const popupContent = `
       <h3>A Note on Data</h3>
       <p>Food rescue data was pulled from the urban canopy warehouse slack channel. R tidyverse package was used to synthesize and clean the data. Manual review was done to pull out like spelling, locations and patterns. 
@@ -283,29 +280,28 @@ closeBtn.addEventListener('click', () => {
       Additional boundary data, such as the neighborhood boundaries, was pulled from the City of Chicago open data portal.</p>
     `;
     
-    // Create a popup div
+    // create a popup div
     const popup = document.createElement('div');
     popup.classList.add('popup');
 
-    // Insert the popup content
+    // popup content into div
     popup.innerHTML = popupContent;
 
-    // Append it to the body
+    // add content to body
     document.body.appendChild(popup);
 
-    // Add a close button to the popup
+    // popup close
     const closeButton = document.createElement('button');
     closeButton.textContent = 'Close';
     closeButton.classList.add('popup-close-button');
     popup.appendChild(closeButton);
 
-    // Close the popup when close button is clicked
     closeButton.addEventListener('click', () => {
-      popup.remove(); // Remove the popup from the DOM
+      popup.remove();
     });
   });
 
-  // Optional: add style for the popup
+  //style pop up body -- do html in js
   const style = document.createElement('style');
   style.innerHTML = `
     .popup {
